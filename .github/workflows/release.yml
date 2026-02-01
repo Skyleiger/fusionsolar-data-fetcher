@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Set up Java
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      # Set up Gradle (includes wrapper validation)
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          validate-wrappers: true
+
+      # Make gradlew executable
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Build JAR file with Gradle
+      - name: Build JAR file
+        run: ./gradlew build
+
+      # Extract version from tag
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # Check if pre-release
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ steps.version.outputs.VERSION }}" =~ -alpha|-beta|-rc|-SNAPSHOT ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Generate changelog from commits
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF#refs/tags/}$" | head -n 1)
+
+          # Generate changelog
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # First release - use all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # Generate changelog since previous tag
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..${GITHUB_REF#refs/tags/} --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Save to file for multiline output
+          echo "$CHANGELOG" > changelog.txt
+
+      # Create GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body_path: changelog.txt
+          files: build/libs/*.jar
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE }}
