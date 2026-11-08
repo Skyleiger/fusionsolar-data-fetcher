@@ -4,7 +4,7 @@
 
 [versions]
 clikt = "5.1.0"
-kotlin = "2.3.0"
+kotlin = "2.4.21"
 kotlin-logging = "8.0.01"
 kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
