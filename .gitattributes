@@ -1,5 +1,18 @@
-# Enforce LF for all text files by default
-* text eol=lf
+# Enforce LF for all text files by default, but allow auto-detection of binary files
+* text=auto eol=lf
 
-# Windows batch files should use CRLF
+# Windows batch files require CRLF
 *.bat text eol=crlf
+
+# Shell scripts require LF
+gradlew text eol=lf
+
+# Binary files
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
